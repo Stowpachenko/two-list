@@ -1,100 +1,87 @@
-import { useFetchData } from "./hooks/useFetchData";
-import { usePosts } from "./hooks/usePosts";
-import { updateIndexes, splitPosts } from "./utils";
-import PostList from "./components/PostList/PostList";
+import { useEffect, useReducer, useState } from "react";
+import axios from "axios";
 import AddPostForm from "./components/AddPostForm/AddPostForm";
-import { fetchPosts, ApiPostItem } from "./service/apiService";
-import { useMemo } from "react";
+import PostList from "./components/PostList/PostList";
+import { postReducer } from "./reducers/postReducer";
+import { ApiPostItem } from "./service/apiService";
+import { useFetchData } from "./hooks/useFetchData";
+
+const initialPosts: ApiPostItem[] = JSON.parse(
+  localStorage.getItem("posts") || "[]"
+);
 
 function App(): JSX.Element {
-  const { data, loading, error, setData } =
-    useFetchData<ApiPostItem[]>(fetchPosts);
-  const { sortedPosts, setSearchQuery, searchQuery, sortBy, setSortBy } =
-    usePosts(data);
+  const [posts, dispatch] = useReducer(postReducer, initialPosts);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  const [posts1, posts2] = useMemo(
-    () => splitPosts(sortedPosts),
-    [sortedPosts]
-  );
-
-  const addPost = (post: ApiPostItem, listKey: "posts1" | "posts2") => {
-    setData((prev) => {
-      const updatedPosts =
-        listKey === "posts1" ? [...posts1, post] : [...posts2, post];
-      const combinedPosts =
-        listKey === "posts1"
-          ? [...updatedPosts, ...posts2]
-          : [...posts1, ...updatedPosts];
-
-      return updateIndexes(combinedPosts);
-    });
+  const fetchPosts = async (): Promise<ApiPostItem[]> => {
+    try {
+      const response = await axios.get<ApiPostItem[]>(
+        "https://fakestoreapi.com/products"
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Ошибка загрузки постов:", error);
+      return [];
+    }
   };
 
-  const removePost = (id: number, listKey: "posts1" | "posts2") => {
-    setData((prev) => {
-      const updatedPosts =
-        listKey === "posts1"
-          ? posts1.filter((post) => post.id !== id)
-          : posts2.filter((post) => post.id !== id);
-      const combinedPosts =
-        listKey === "posts1"
-          ? [...updatedPosts, ...posts2]
-          : [...posts1, ...updatedPosts];
+  const { data, loading, error } = useFetchData(fetchPosts);
 
-      return updateIndexes(combinedPosts);
-    });
+  useEffect(() => {
+    if (data && posts.length === 0) {
+      dispatch({ type: "SET_POSTS", payload: data });
+    }
+  }, [data]);
+
+  useEffect(() => {
+    localStorage.setItem("posts", JSON.stringify(posts));
+  }, [posts]);
+
+  const addPost = (post: {
+    title: string;
+    description?: string;
+    category?: string;
+  }) => {
+    const newPost: ApiPostItem = {
+      id: Date.now(),
+      ...post,
+    };
+    dispatch({ type: "ADD_POST", payload: newPost });
   };
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
+  const removePost = (id: number) => {
+    dispatch({ type: "REMOVE_POST", payload: id });
+  };
+
+  const filteredPosts = selectedCategory
+    ? posts.filter((post) => post.category === selectedCategory)
+    : posts;
 
   return (
     <div className="App">
-      <AddPostForm
-        onAddPost={(post) =>
-          addPost(
-            {
-              id: Date.now(),
-              title: post.title,
-              description: post.description,
-              number: post.number ?? 0,
-            },
-            "posts1"
-          )
-        }
-      />
+      <AddPostForm onAddPost={addPost} />
 
-      <div className="filters">
-        <label>
-          Поиск:
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Искать по"
-          />
-        </label>
+      <h1>Список постов</h1>
 
-        <label>
-          Сортировать по:
-          <select
-            value={sortBy}
-            onChange={(e) =>
-              setSortBy(e.target.value as "title" | "description" | "number")
-            }
-          >
-            <option value="number">Номер поста</option>
-            <option value="title">Заголовок</option>
-            <option value="description">Описание</option>
-          </select>
-        </label>
+      {loading && <p>Загрузка...</p>}
+      {error && <p>Ошибка: {error}</p>}
+
+      <div>
+        <button onClick={() => setSelectedCategory(null)}>Все категории</button>
+        {[...new Set(posts.map((post) => post.category))]
+          .filter(Boolean)
+          .map((category) => (
+            <button
+              key={category}
+              onClick={() => setSelectedCategory(category!)}
+            >
+              {category}
+            </button>
+          ))}
       </div>
 
-      <h1>Список постов 1</h1>
-      <PostList posts={posts1} onDelete={(id) => removePost(id, "posts1")} />
-
-      <h1>Список постов 2</h1>
-      <PostList posts={posts2} onDelete={(id) => removePost(id, "posts2")} />
+      <PostList posts={filteredPosts} onDelete={removePost} />
     </div>
   );
 }

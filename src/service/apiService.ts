@@ -3,6 +3,7 @@ export interface ApiPostItem {
   title: string;
   description?: string;
   number?: number;
+  category?: string;
 }
 
 export const fetchPosts = async (): Promise<ApiPostItem[]> => {

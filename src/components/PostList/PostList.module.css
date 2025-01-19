@@ -12,6 +12,12 @@
   padding: 15px;
   margin-bottom: 15px;
   border-radius: 5px;
+  background-color: #f9f9f9;
+  transition: box-shadow 0.3s;
+}
+
+.postItem:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .postContent {
@@ -19,8 +25,20 @@
   flex-direction: column;
 }
 
+.postCategory {
+  font-size: 12px;
+  font-weight: bold;
+  color: white;
+  background-color: teal;
+  padding: 2px 8px;
+  border-radius: 3px;
+  align-self: flex-start;
+  margin-bottom: 10px;
+}
+
 .postTitle {
   font-weight: bold;
+  font-size: 16px;
   margin-bottom: 5px;
 }
 
@@ -42,4 +60,20 @@
 .deleteButton:hover {
   background-color: teal;
   color: white;
+}
+
+.sortOptions,
+.filterOptions {
+  margin-bottom: 10px;
+}
+
+.sortOptions label,
+.filterOptions label {
+  margin-right: 5px;
+}
+
+.sortOptions select,
+.filterOptions input {
+  padding: 5px;
+  font-size: 14px;
 }
